@@ -1,4 +1,5 @@
-name: Deploy to GitHub Pages with Yarn
+# A workflow to build and deploy a static site to GitHub Pages using PNPM
+name: Deploy to GitHub Pages with PNPM
 
 # Run this workflow on pushes to the 'main' branch
 on:
@@ -6,40 +7,48 @@ on:
     branches:
       - main
 
-# Give the workflow permissions to write to the repository
+# Give the workflow permissions to write to the repository for deployment
 permissions:
   contents: write
 
-# Define the job that will run
+# Define the single job for this workflow
 jobs:
   deploy:
     runs-on: ubuntu-latest # Use the latest version of Ubuntu
     steps:
-      # 1. Check out your repository's code
+      # 1. Check out your repository's code so the job can access it
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 2. Set up Node.js for the build process
+      # 2. Set up PNPM and Node.js. This action also handles caching the pnpm store.
+      - name: Set up PNPM
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10 # Specify your desired pnpm version
+          run_install: false # We will run install in a separate step
+
+      # 3. Set up the specific Node.js version to be used with PNPM
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "24" # Specify your Node.js version
-          cache: "yarn" # Set the cache to use yarn
+          node-version: "24" # Use Node.js version 24
+          cache: "pnpm" # Point to pnpm's cache for Node.js to use
 
-      # 3. Install dependencies and build the app
+      # 4. Install dependencies and build the app
       - name: Install and Build
         run: |
-          yarn install --frozen-lockfile
-          yarn run build
+          pnpm install --frozen-lockfile
+          pnpm run build
         env:
-          # Dynamically set the public path using the repository name
-          # The ${{ github.event.repository.name }} variable is automatically
-          # provided by GitHub Actions and contains the name of the repo.
+          # This sets the base path for your assets, which is necessary for GitHub Pages.
+          # The variable name (e.g., PUBLIC_URL, BASE_URL) may depend on your build tool (Vite, Create React App, etc.).
+          # The value is set to the name of your repository.
           PUBLIC_URL: /${{ github.event.repository.name }}
 
-      # 4. Deploy the dist folder to the gh-pages branch
+      # 5. Deploy the built assets to the gh-pages branch
       - name: Deploy to gh-pages
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./dist # The directory to deploy
+          publish_dir: ./dist # The directory containing your built site
+
